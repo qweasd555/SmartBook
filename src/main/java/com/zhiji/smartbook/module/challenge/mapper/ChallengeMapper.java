@@ -1,0 +1,8 @@
+package com.zhiji.smartbook.module.challenge.mapper;
+
+import org.apache.ibatis.annotations.Mapper;
+
+@Mapper
+public interface ChallengeMapper {
+    
+}

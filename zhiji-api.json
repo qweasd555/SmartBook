@@ -1,0 +1,1113 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "智记 App 首期联调接口",
+    "description": "面向 Spring Boot + MySQL 的智记 App 首期联调接口定义，仅包含登录、用户信息、账单、共享账单、账单报表五个模块。",
+    "version": "1.1.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080/api",
+      "description": "开发环境"
+    },
+    {
+      "url": "https://test.zhiji.com/api",
+      "description": "测试环境"
+    }
+  ],
+  "tags": [
+    {
+      "name": "认证模块",
+      "description": "登录、刷新 token、退出登录"
+    },
+    {
+      "name": "用户模块",
+      "description": "当前登录用户信息与首页摘要"
+    },
+    {
+      "name": "账单模块",
+      "description": "账单新增、编辑、删除、详情、列表"
+    },
+    {
+      "name": "共享账单模块",
+      "description": "共享账单与结算"
+    },
+    {
+      "name": "报表模块",
+      "description": "账单统计与报表"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "ApiResp": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "example": 0
+          },
+          "message": {
+            "type": "string",
+            "example": "success"
+          },
+          "data": {
+            "type": "object"
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "2b1f6d2d-7f92-4a4c-a5fd-6f32fd4a1b11"
+          },
+          "timestamp": {
+            "type": "string",
+            "example": "2026-04-10 11:00:00"
+          }
+        }
+      },
+      "LoginReq": {
+        "type": "object",
+        "required": [
+          "loginType"
+        ],
+        "properties": {
+          "loginType": {
+            "type": "string",
+            "enum": [
+              "WECHAT_APP",
+              "MOBILE_SMS",
+              "PASSWORD",
+              "APPLE"
+            ],
+            "example": "WECHAT_APP"
+          },
+          "code": {
+            "type": "string",
+            "example": "wx_app_login_code"
+          },
+          "mobile": {
+            "type": "string",
+            "example": "13800000000"
+          },
+          "password": {
+            "type": "string",
+            "example": "123456"
+          },
+          "nickname": {
+            "type": "string",
+            "example": "小智"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "example": "https://xx.com/avatar.png"
+          }
+        }
+      },
+      "RefreshTokenReq": {
+        "type": "object",
+        "required": [
+          "refreshToken"
+        ],
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "example": "refresh_token"
+          }
+        }
+      },
+      "UserProfileUpdateReq": {
+        "type": "object",
+        "properties": {
+          "nickname": {
+            "type": "string",
+            "example": "小智"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "example": "https://xx.com/avatar.png"
+          },
+          "userType": {
+            "type": "string",
+            "example": "WORKER"
+          }
+        }
+      },
+      "BillCreateReq": {
+        "type": "object",
+        "required": [
+          "ledgerId",
+          "type",
+          "amount",
+          "categoryId",
+          "occurredAt"
+        ],
+        "properties": {
+          "ledgerId": {
+            "type": "integer",
+            "example": 20001
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "EXPENSE",
+              "INCOME"
+            ],
+            "example": "EXPENSE"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "example": 25.5
+          },
+          "categoryId": {
+            "type": "integer",
+            "example": 502
+          },
+          "merchantName": {
+            "type": "string",
+            "example": "滴滴出行"
+          },
+          "occurredAt": {
+            "type": "string",
+            "example": "2026-04-08 12:15:00"
+          },
+          "remark": {
+            "type": "string",
+            "example": "打车回家"
+          },
+          "receiptImageUrl": {
+            "type": "string",
+            "example": ""
+          },
+          "source": {
+            "type": "string",
+            "example": "MANUAL"
+          }
+        }
+      },
+      "BillUpdateReq": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BillCreateReq"
+          }
+        ]
+      },
+      "SharedBillCreateReq": {
+        "type": "object",
+        "required": [
+          "name",
+          "currency",
+          "members"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "大理旅行"
+          },
+          "currency": {
+            "type": "string",
+            "example": "CNY"
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "userId": {
+                  "type": "integer",
+                  "example": 10001
+                },
+                "name": {
+                  "type": "string",
+                  "example": "我"
+                }
+              }
+            }
+          }
+        }
+      },
+      "SharedBillItemCreateReq": {
+        "type": "object",
+        "required": [
+          "title",
+          "amount",
+          "paidByUserId",
+          "splitType",
+          "participantUserIds",
+          "occurredAt"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "晚餐聚餐"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "example": 356
+          },
+          "paidByUserId": {
+            "type": "integer",
+            "example": 10001
+          },
+          "splitType": {
+            "type": "string",
+            "enum": [
+              "AVERAGE"
+            ],
+            "example": "AVERAGE"
+          },
+          "participantUserIds": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "example": [
+              10001,
+              10002,
+              10003,
+              10004
+            ]
+          },
+          "occurredAt": {
+            "type": "string",
+            "example": "2026-04-07 19:00:00"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "认证模块"
+        ],
+        "summary": "App 登录",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResp"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": [
+          "认证模块"
+        ],
+        "summary": "刷新 token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "认证模块"
+        ],
+        "summary": "退出登录",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      }
+    },
+    "/users/me": {
+      "get": {
+        "tags": [
+          "用户模块"
+        ],
+        "summary": "获取当前用户信息",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "用户模块"
+        ],
+        "summary": "更新当前用户信息",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserProfileUpdateReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      }
+    },
+    "/users/me/dashboard": {
+      "get": {
+        "tags": [
+          "用户模块"
+        ],
+        "summary": "获取用户首页摘要",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "range",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "TODAY",
+                "WEEK",
+                "MONTH"
+              ],
+              "default": "TODAY"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      }
+    },
+    "/transactions": {
+      "get": {
+        "tags": [
+          "账单模块"
+        ],
+        "summary": "分页查询账单列表",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pageNo",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "name": "ledgerId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "range",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "example": "TODAY"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "EXPENSE",
+                "INCOME"
+              ]
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "账单模块"
+        ],
+        "summary": "手动创建账单",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillCreateReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      }
+    },
+    "/transactions/{transactionId}": {
+      "get": {
+        "tags": [
+          "账单模块"
+        ],
+        "summary": "获取账单详情",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transactionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "账单模块"
+        ],
+        "summary": "编辑账单",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transactionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillUpdateReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "账单模块"
+        ],
+        "summary": "删除账单",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transactionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      }
+    },
+    "/transactions/group-by-date": {
+      "get": {
+        "tags": [
+          "账单模块"
+        ],
+        "summary": "按日期聚合查询账单",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ledgerId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "2026-04-01"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "2026-04-10"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      }
+    },
+    "/transactions/recent": {
+      "get": {
+        "tags": [
+          "账单模块"
+        ],
+        "summary": "获取最近账单",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ledgerId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 5
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      }
+    },
+    "/shared-bills": {
+      "get": {
+        "tags": [
+          "共享账单模块"
+        ],
+        "summary": "获取共享账单列表",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "共享账单模块"
+        ],
+        "summary": "创建共享账单",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedBillCreateReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      }
+    },
+    "/shared-bills/{sharedBillId}": {
+      "get": {
+        "tags": [
+          "共享账单模块"
+        ],
+        "summary": "获取共享账单详情",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sharedBillId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      }
+    },
+    "/shared-bills/{sharedBillId}/items": {
+      "post": {
+        "tags": [
+          "共享账单模块"
+        ],
+        "summary": "新增分摊记录",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sharedBillId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedBillItemCreateReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      }
+    },
+    "/shared-bills/{sharedBillId}/settlements": {
+      "get": {
+        "tags": [
+          "共享账单模块"
+        ],
+        "summary": "获取结算概览",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sharedBillId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      }
+    },
+    "/shared-bills/{sharedBillId}/settlements/{settlementId}/confirm": {
+      "post": {
+        "tags": [
+          "共享账单模块"
+        ],
+        "summary": "确认结算",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sharedBillId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "settlementId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      }
+    },
+    "/reports/summary": {
+      "get": {
+        "tags": [
+          "报表模块"
+        ],
+        "summary": "周报或月报概览",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ledgerId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "periodType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "WEEK",
+                "MONTH"
+              ]
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "2026-04-10"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      }
+    },
+    "/reports/category-ratio": {
+      "get": {
+        "tags": [
+          "报表模块"
+        ],
+        "summary": "分类占比",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ledgerId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "periodType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "WEEK",
+                "MONTH"
+              ]
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "EXPENSE",
+                "INCOME"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      }
+    },
+    "/reports/trend": {
+      "get": {
+        "tags": [
+          "报表模块"
+        ],
+        "summary": "趋势图",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ledgerId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "periodType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "WEEK",
+                "MONTH"
+              ]
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "EXPENSE",
+                "INCOME"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      }
+    },
+    "/reports/warnings": {
+      "get": {
+        "tags": [
+          "报表模块"
+        ],
+        "summary": "异常预警",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ledgerId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "periodType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "WEEK",
+                "MONTH"
+              ]
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      }
+    }
+  }
+}
