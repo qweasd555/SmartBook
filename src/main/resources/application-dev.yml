@@ -1,0 +1,60 @@
+server:
+  port: 8080
+  address: 0.0.0.0  # 绑定到所有网络接口，允许外部访问
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/smartbook?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+    type: com.zaxxer.hikari.HikariDataSource
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      connection-test-query: SELECT 1
+      max-lifetime: 1800000
+      connection-timeout: 30000
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      password:
+      timeout: 30000s #连接超时时间，默认1天
+      lettuce:
+        shutdown-timeout: 100ms #关闭超时时间 默认100ms
+        pool:
+          max-active: 8 # 连接池最大连接数 默认 8（-1 ：表示没有限制）
+          max-wait: 60000ms # 连接池最大阻塞等待时间 默认-1ms （-1 :表示没有限制） 这里设置1分钟
+          max-idle: 8 # 最大空闲连接  默认 8
+          min-idle: 0 # 最小空闲连接  默认 0
+
+  jackson:
+    time-zone: GMT+8
+    date-format: yyyy-MM-dd HH:mm:ss
+  mvc:
+    format:
+      date-time: yyyy-MM-dd HH:mm:ss
+      date: yyyy-MM-dd
+      time: HH:mm:ss
+# 文件上传配置
+file:
+  upload:
+    # 文件上传根目录
+    path: d:/smart_expense_tracking/uploads/
+    # 静态资源访问路径
+    access-path: /uploads/**
+
+
+security:
+  jwt:
+    secret: K7k7yB6c6m0qZfzxqg2mC3h4Z9WmQF2q1y6E9vT3b8N0P4r5s7U2w8X1Y5Z6A3B
+    ttlSeconds: 2592000  # 30 days
+
+
