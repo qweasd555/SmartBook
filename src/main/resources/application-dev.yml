@@ -57,4 +57,14 @@ security:
     secret: K7k7yB6c6m0qZfzxqg2mC3h4Z9WmQF2q1y6E9vT3b8N0P4r5s7U2w8X1Y5Z6A3B
     ttlSeconds: 2592000  # 30 days
 
+sms:
+  juhe:
+    enabled: true
+    url: http://v.juhe.cn/sms/send
+    api-key: 0b7c3395e652840bc2ade53e1214dec1
+    tpl-id: 274299
+    ext:
+    connect-timeout: 5s
+    read-timeout: 10s
+
 
