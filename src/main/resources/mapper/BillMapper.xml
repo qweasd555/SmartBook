@@ -2,4 +2,45 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.zhiji.smartbook.module.bill.mapper.BillMapper">
+
+    <!-- 分页查询账单列表 -->
+    <select id="selectBillPage" resultType="com.zhiji.smartbook.module.bill.vo.BillListItemVO">
+        SELECT id, type, amount, category_name, merchant_name, occurred_at, ocr_task_id AS source
+        FROM transactions
+        WHERE user_id = #{userId}
+          AND status = 0
+          <if test="startTime != null and startTime != ''">
+              AND occurred_at >= #{startTime}
+          </if>
+          <if test="endTime != null and endTime != ''">
+              AND occurred_at &lt;= #{endTime}
+          </if>
+          <if test="type != null and type != ''">
+              AND type = #{type}
+          </if>
+          <if test="categoryName != null and categoryName != ''">
+              AND category_name = #{categoryName}
+          </if>
+        ORDER BY occurred_at DESC
+    </select>
+
+    <!-- 按天聚合账单 -->
+    <select id="selectGroupByDate" resultType="com.zhiji.smartbook.module.bill.vo.BillGroupByDateVO">
+        SELECT
+            DATE_FORMAT(occurred_at, '%Y-%m-%d') AS date,
+            SUM(CASE WHEN type = 0 THEN amount ELSE 0 END) AS expenseTotal,
+            SUM(CASE WHEN type = 1 THEN amount ELSE 0 END) AS incomeTotal
+        FROM transactions
+        WHERE user_id = #{userId}
+          AND status = 0
+          <if test="startTime != null and startTime != ''">
+              AND occurred_at >= #{startTime}
+          </if>
+          <if test="endTime != null and endTime != ''">
+              AND occurred_at &lt;= #{endTime}
+          </if>
+        GROUP BY DATE_FORMAT(occurred_at, '%Y-%m-%d')
+        ORDER BY date DESC
+    </select>
+
 </mapper>

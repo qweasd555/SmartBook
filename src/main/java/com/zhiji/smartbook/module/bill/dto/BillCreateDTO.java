@@ -8,6 +8,7 @@ public class BillCreateDTO {
     private String type;
     private Double amount;
     private Long categoryId;
+    private String categoryName;
     private String merchantName;
     private String occurredAt;
     private String remark;
