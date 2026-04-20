@@ -1,0 +1,1237 @@
+openapi: 3.0.3
+info:
+  title: 智记 API
+  version: 1.0.0
+  description: 智记 App 后端接口文档，基于 Spring Boot + MySQL
+
+servers:
+  - url: http://localhost:8080/api
+    description: 开发环境
+  - url: https://api.zhiji.com/api
+    description: 生产环境
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+        message:
+          type: string
+          example: success
+        data:
+          nullable: true
+
+    PageResult:
+      type: object
+      properties:
+        pageNo:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+        list:
+          type: array
+          items: {}
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 10001
+        mobile:
+          type: string
+          example: "13800000000"
+        nickname:
+          type: string
+          example: 小智
+        avatarUrl:
+          type: string
+          example: https://xx.com/avatar.png
+        status:
+          type: integer
+          description: "0=正常 1=禁用"
+        createdAt:
+          type: string
+          example: "2026-04-08 10:00:00"
+
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        type:
+          type: integer
+          description: "0=支出 1=收入"
+        amount:
+          type: number
+          format: double
+        categoryName:
+          type: string
+        merchantName:
+          type: string
+        occurredAt:
+          type: string
+        remark:
+          type: string
+        receiptImageUrl:
+          type: string
+        ocrTaskId:
+          type: string
+        status:
+          type: integer
+          description: "0=正常 1=已删除"
+        createdAt:
+          type: string
+
+    TransactionInput:
+      type: object
+      required: [type, amount, categoryName, occurredAt]
+      properties:
+        type:
+          type: integer
+          description: "0=支出 1=收入"
+        amount:
+          type: number
+          format: double
+        categoryName:
+          type: string
+          enum: [餐饮, 交通, 购物, 娱乐, 医疗, 收入, 其他]
+        merchantName:
+          type: string
+        occurredAt:
+          type: string
+        remark:
+          type: string
+
+    OcrRecord:
+      type: object
+      properties:
+        taskId:
+          type: string
+        status:
+          type: integer
+          description: "0=处理中 1=就绪 2=已确认入账 3=识别失败"
+        recognized:
+          type: boolean
+        confidence:
+          type: number
+        amount:
+          type: number
+        merchantName:
+          type: string
+        occurredAt:
+          type: string
+        categorySuggestion:
+          type: object
+          properties:
+            categoryName:
+              type: string
+        rawText:
+          type: string
+
+    Budget:
+      type: object
+      properties:
+        id:
+          type: integer
+        periodType:
+          type: string
+          enum: [WEEK, MONTH]
+        categoryName:
+          type: string
+        amount:
+          type: number
+        usedAmount:
+          type: number
+        usageRate:
+          type: number
+        alertThreshold:
+          type: integer
+
+    Challenge:
+      type: object
+      properties:
+        startDate:
+          type: string
+        completedDays:
+          type: integer
+        totalDays:
+          type: integer
+        status:
+          type: integer
+          description: "0=进行中 1=已完成 2=已放弃"
+        days:
+          type: array
+          items:
+            type: string
+
+    SharedBill:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        totalAmount:
+          type: number
+        currency:
+          type: string
+        status:
+          type: integer
+          description: "0=未结算 1=已结算"
+        memberCount:
+          type: integer
+
+    SavingGoal:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        targetAmount:
+          type: number
+        currentAmount:
+          type: number
+        targetDate:
+          type: string
+        coverImageUrl:
+          type: string
+        remark:
+          type: string
+        status:
+          type: integer
+          description: "0=进行中 1=已完成 2=已放弃"
+        createdAt:
+          type: string
+
+paths:
+  # ───── 认证 ─────
+  /auth/sms-code:
+    post:
+      tags: [认证]
+      summary: 发送验证码
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mobile]
+              properties:
+                mobile:
+                  type: string
+                  example: "13800000000"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+
+  /auth/login:
+    post:
+      tags: [认证]
+      summary: 验证码登录（首次自动注册）
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mobile, code]
+              properties:
+                mobile:
+                  type: string
+                code:
+                  type: string
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          token:
+                            type: string
+                          expiresIn:
+                            type: integer
+                            example: 2592000
+                          user:
+                            $ref: "#/components/schemas/User"
+
+  /auth/logout:
+    post:
+      tags: [认证]
+      summary: 退出登录
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+
+  # ───── 用户 ─────
+  /users/me:
+    get:
+      tags: [用户]
+      summary: 获取当前用户信息
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/User"
+    put:
+      tags: [用户]
+      summary: 更新用户信息
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nickname:
+                  type: string
+                avatarUrl:
+                  type: string
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+
+  /users/me/dashboard:
+    get:
+      tags: [用户]
+      summary: 首页摘要
+      parameters:
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum: [TODAY, WEEK, MONTH]
+            default: TODAY
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          netBalance:
+                            type: number
+                          incomeTotal:
+                            type: number
+                          expenseTotal:
+                            type: number
+                          challenge:
+                            type: object
+                            properties:
+                              completedDays:
+                                type: integer
+                              totalDays:
+                                type: integer
+
+  # ───── OCR ─────
+  /ocr/recognitions:
+    post:
+      tags: [OCR]
+      summary: 上传图片并发起识别
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 图片文件，仅支持 jpg/png，限制 10MB
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          taskId:
+                            type: string
+
+  /ocr/recognitions/{taskId}:
+    get:
+      tags: [OCR]
+      summary: 查询 OCR 识别结果
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/OcrRecord"
+
+  /ocr/recognitions/{taskId}/confirm:
+    post:
+      tags: [OCR]
+      summary: OCR 结果确认入账
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionInput"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          transactionId:
+                            type: integer
+
+  # ───── 账单 ─────
+  /transactions:
+    post:
+      tags: [账单]
+      summary: 手动创建账单
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionInput"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+    get:
+      tags: [账单]
+      summary: 分页查询账单列表
+      parameters:
+        - name: pageNo
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum: [TODAY, WEEK, MONTH]
+        - name: type
+          in: query
+          schema:
+            type: integer
+            description: "0=支出 1=收入"
+        - name: categoryName
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/PageResult"
+
+  /transactions/group-by-date:
+    get:
+      tags: [账单]
+      summary: 按天聚合账单
+      parameters:
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum: [TODAY, WEEK, MONTH]
+            default: TODAY
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                date:
+                                  type: string
+                                expenseTotal:
+                                  type: number
+                                incomeTotal:
+                                  type: number
+                                items:
+                                  type: array
+                                  items:
+                                    $ref: "#/components/schemas/Transaction"
+
+  /transactions/{transactionId}:
+    get:
+      tags: [账单]
+      summary: 获取账单详情
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Transaction"
+    put:
+      tags: [账单]
+      summary: 编辑账单
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionInput"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+    delete:
+      tags: [账单]
+      summary: 删除账单（逻辑删除）
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+
+  # ───── 报表 ─────
+  /reports:
+    get:
+      tags: [报表]
+      summary: 报表页数据
+      parameters:
+        - name: periodType
+          in: query
+          schema:
+            type: string
+            enum: [WEEK, MONTH]
+            default: WEEK
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          categoryRatio:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                categoryName:
+                                  type: string
+                                amount:
+                                  type: number
+                                ratio:
+                                  type: number
+                          budgets:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Budget"
+                          warnings:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                warningType:
+                                  type: string
+                                  enum: [BUDGET_WARNING, BUDGET_EXCEEDED]
+                                categoryName:
+                                  type: string
+                          avgDailyExpense:
+                            type: number
+                          expenseChangeRate:
+                            type: number
+                          largestExpense:
+                            type: object
+                            properties:
+                              amount:
+                                type: number
+                              categoryName:
+                                type: string
+                              merchantName:
+                                type: string
+
+  # ───── 预算 ─────
+  /budgets:
+    post:
+      tags: [预算]
+      summary: 设置预算（重复提交则覆盖）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [periodType, amount]
+              properties:
+                periodType:
+                  type: string
+                  enum: [WEEK, MONTH]
+                categoryName:
+                  type: string
+                  description: 为空表示设置总预算
+                amount:
+                  type: number
+                alertThreshold:
+                  type: integer
+                  default: 80
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+
+  /budgets/{budgetId}:
+    delete:
+      tags: [预算]
+      summary: 删除预算
+      parameters:
+        - name: budgetId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+
+  # ───── 21天挑战 ─────
+  /challenges/current:
+    get:
+      tags: [21天挑战]
+      summary: 获取当前挑战
+      responses:
+        "200":
+          description: 成功，无进行中挑战时 data 为 null
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        nullable: true
+                        $ref: "#/components/schemas/Challenge"
+
+  /challenges/start:
+    post:
+      tags: [21天挑战]
+      summary: 开启挑战
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+
+  /challenges/badges:
+    get:
+      tags: [21天挑战]
+      summary: 获取徽章列表
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            code:
+                              type: string
+                            name:
+                              type: string
+
+  # ───── 共享账单 ─────
+  /shared-bills:
+    get:
+      tags: [共享账单]
+      summary: 获取共享账单列表
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/SharedBill"
+    post:
+      tags: [共享账单]
+      summary: 创建共享账单
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, currency, members]
+              properties:
+                name:
+                  type: string
+                currency:
+                  type: string
+                  default: CNY
+                members:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      userId:
+                        type: integer
+                      name:
+                        type: string
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+
+  /shared-bills/{sharedBillId}:
+    get:
+      tags: [共享账单]
+      summary: 获取共享账单详情
+      parameters:
+        - name: sharedBillId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                          name:
+                            type: string
+                          currency:
+                            type: string
+                          totalAmount:
+                            type: number
+                          status:
+                            type: integer
+                          members:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                userId:
+                                  type: integer
+                                name:
+                                  type: string
+                                avatarUrl:
+                                  type: string
+                          recentItems:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                title:
+                                  type: string
+                                amount:
+                                  type: number
+                                occurredAt:
+                                  type: string
+
+  /shared-bills/{sharedBillId}/items:
+    post:
+      tags: [共享账单]
+      summary: 新增分摊记录
+      parameters:
+        - name: sharedBillId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, amount, paidByUserId, splitType, participantUserIds, occurredAt]
+              properties:
+                title:
+                  type: string
+                amount:
+                  type: number
+                paidByUserId:
+                  type: integer
+                splitType:
+                  type: string
+                  enum: [AVERAGE, CUSTOM]
+                participantUserIds:
+                  type: array
+                  items:
+                    type: integer
+                occurredAt:
+                  type: string
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+
+  /shared-bills/{sharedBillId}/settlements:
+    get:
+      tags: [共享账单]
+      summary: 获取结算概览
+      parameters:
+        - name: sharedBillId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          payableAmount:
+                            type: number
+                          receivableAmount:
+                            type: number
+                          settlements:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                fromUserName:
+                                  type: string
+                                toUserName:
+                                  type: string
+                                amount:
+                                  type: number
+                                status:
+                                  type: integer
+                                  description: "0=待确认 1=已确认"
+
+  /shared-bills/{sharedBillId}/settlements/{settlementId}/confirm:
+    post:
+      tags: [共享账单]
+      summary: 确认结算
+      parameters:
+        - name: sharedBillId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: settlementId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+
+  # ───── 储蓄目标 ─────
+  /saving-goals:
+    get:
+      tags: [储蓄目标]
+      summary: 获取目标列表
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/SavingGoal"
+    post:
+      tags: [储蓄目标]
+      summary: 创建储蓄目标
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, targetAmount, targetDate]
+              properties:
+                title:
+                  type: string
+                targetAmount:
+                  type: number
+                targetDate:
+                  type: string
+                coverImageUrl:
+                  type: string
+                remark:
+                  type: string
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+
+  /saving-goals/{goalId}:
+    get:
+      tags: [储蓄目标]
+      summary: 获取目标详情
+      parameters:
+        - name: goalId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/SavingGoal"
+    put:
+      tags: [储蓄目标]
+      summary: 更新目标
+      parameters:
+        - name: goalId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                targetAmount:
+                  type: number
+                targetDate:
+                  type: string
+                coverImageUrl:
+                  type: string
+                remark:
+                  type: string
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+    delete:
+      tags: [储蓄目标]
+      summary: 删除目标
+      parameters:
+        - name: goalId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+
+  /saving-goals/{goalId}/deposits:
+    post:
+      tags: [储蓄目标]
+      summary: 存入金额
+      parameters:
+        - name: goalId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, occurredAt]
+              properties:
+                amount:
+                  type: number
+                occurredAt:
+                  type: string
+                remark:
+                  type: string
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          currentAmount:
+                            type: number
+    get:
+      tags: [储蓄目标]
+      summary: 获取存入记录
+      parameters:
+        - name: goalId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                            amount:
+                              type: number
+                            occurredAt:
+                              type: string
+                            remark:
+                              type: string
+
+tags:
+  - name: 认证
+  - name: 用户
+  - name: OCR
+  - name: 账单
+  - name: 报表
+  - name: 预算
+  - name: 21天挑战
+  - name: 共享账单
+  - name: 储蓄目标

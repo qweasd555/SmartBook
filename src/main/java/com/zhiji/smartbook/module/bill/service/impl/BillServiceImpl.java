@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +34,8 @@ public class BillServiceImpl implements BillService {
 
     @Override
     public Map<String, Object> createBill(BillCreateDTO request, String idempotencyKey) {
-        Long userId = UserContext.get();
+       // Long userId = UserContext.get();
+       Long userId = 1L;
         Bill bill = new Bill();
         bill.setUserId(userId);
         bill.setType("EXPENSE".equals(request.getType()) ? 0 : 1);
@@ -52,7 +54,7 @@ public class BillServiceImpl implements BillService {
     @Override
     public BillDetailVO updateBill(Long transactionId, BillUpdateDTO request) {
         Bill bill = billMapper.selectById(transactionId);
-        if (bill == null || !bill.getUserId().equals(UserContext.get())) return null;
+        if (bill == null || !bill.getUserId().equals(1L)) return null;
         if (request.getType() != null) bill.setType("EXPENSE".equals(request.getType()) ? 0 : 1);
         if (request.getAmount() != null) bill.setAmount(BigDecimal.valueOf(request.getAmount()));
         if (request.getMerchantName() != null) bill.setMerchantName(request.getMerchantName());
@@ -76,33 +78,74 @@ public class BillServiceImpl implements BillService {
         return toDetailVO(bill);
     }
 
+//    @Override
+//    public Map<String, Object> getBills(Integer pageNo, Integer pageSize, Long ledgerId,
+//                                        String range, String type, Long categoryId) {
+//        String[] range2Time = resolveRange(range);
+//        Page<BillListItemVO> page = new Page<>(pageNo, pageSize);
+//        Integer typeValue = null;
+//
+//        if (type != null) {
+//            typeValue = "EXPENSE".equals(type) ? 0 : 1;
+//        }
+//        List<BillListItemVO> list = billMapper.selectBillPage(
+//                UserContext.get(),
+//                range2Time[0],
+//                range2Time[1],
+//                typeValue,
+//                null);
+//        Map<String, Object> result = new LinkedHashMap<>();
+//        result.put("pageNo", pageNo);
+//        result.put("pageSize", pageSize);
+//        result.put("total", list.size());
+//        int from = (int) page.offset();
+//        int to = Math.min(from + pageSize, list.size());
+//        result.put("list", from < list.size() ? list.subList(from, to) : List.of());
+//        return result;
+//    }
+
     @Override
     public Map<String, Object> getBills(Integer pageNo, Integer pageSize, Long ledgerId,
                                         String range, String type, Long categoryId) {
         String[] range2Time = resolveRange(range);
-        Page<BillListItemVO> page = new Page<>(pageNo, pageSize);
-        List<BillListItemVO> list = billMapper.selectBillPage(UserContext.get(),
-                range2Time[0], range2Time[1], type, null);
+        Integer typeValue = null;
+        if (type != null) {
+            typeValue = "EXPENSE".equals(type) ? 0 : 1;
+        }
+
+        // 直接查列表，不用手动分页
+        List<BillListItemVO> list = billMapper.selectBillPage(
+                1L, // 写死用户ID
+                range2Time[0],
+                range2Time[1],
+                typeValue,
+                null);
+
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("pageNo", pageNo);
         result.put("pageSize", pageSize);
         result.put("total", list.size());
-        int from = (int) page.offset();
-        int to = Math.min(from + pageSize, list.size());
-        result.put("list", from < list.size() ? list.subList(from, to) : List.of());
+        result.put("list", list);
         return result;
     }
 
-    @Override
-    public List<BillGroupByDateVO> groupByDate(Long ledgerId, String startDate, String endDate) {
-        return billMapper.selectGroupByDate(UserContext.get(),
-                startDate + " 00:00:00", endDate + " 23:59:59");
-    }
+//    @Override
+//    public List<BillGroupByDateVO> groupByDate(Long ledgerId, String startDate, String endDate) {
+//        return billMapper.selectGroupByDate(1L,
+//                startDate + " 00:00:00", endDate + " 23:59:59");
+//    }
+@Override
+public List<BillGroupByDateVO> groupByDate(Long ledgerId, String startDate, String endDate, String categoryName) {
+    String startTime = startDate != null ? startDate + " 00:00:00" : null;
+    String endTime = endDate != null ? endDate + " 23:59:59" : null;
+
+    return billMapper.selectGroupByDate(1L, startTime, endTime, categoryName);
+}
 
     @Override
     public List<RecentBillVO> getRecentBills(Long ledgerId, Integer limit) {
         LambdaQueryWrapper<Bill> wrapper = new LambdaQueryWrapper<Bill>()
-                .eq(Bill::getUserId, UserContext.get())
+                .eq(Bill::getUserId, 1L)
                 .eq(Bill::getStatus, 0)
                 .orderByDesc(Bill::getOccurredAt)
                 .last("LIMIT " + limit);
@@ -125,7 +168,7 @@ public class BillServiceImpl implements BillService {
         BillDetailVO vo = new BillDetailVO();
         vo.setId(bill.getId());
         vo.setType(bill.getType() == 0 ? "EXPENSE" : "INCOME");
-        vo.setAmount(bill.getAmount().doubleValue());
+        vo.setAmount(bill.getAmount());
         vo.setCategoryName(bill.getCategoryName());
         vo.setMerchantName(bill.getMerchantName());
         vo.setOccurredAt(bill.getOccurredAt() != null ? bill.getOccurredAt().format(FMT) : null);
@@ -139,11 +182,36 @@ public class BillServiceImpl implements BillService {
         RecentBillVO vo = new RecentBillVO();
         vo.setId(bill.getId());
         vo.setType(bill.getType() == 0 ? "EXPENSE" : "INCOME");
-        vo.setAmount(bill.getAmount().doubleValue());
+        vo.setAmount(bill.getAmount());
         vo.setCategoryName(bill.getCategoryName());
         vo.setMerchantName(bill.getMerchantName());
         vo.setOccurredAt(bill.getOccurredAt() != null ? bill.getOccurredAt().format(FMT) : null);
         vo.setSource(bill.getOcrTaskId() != null ? "OCR" : "MANUAL");
         return vo;
     }
+
+    @Override
+    public List<Map<String, Object>> getCategoryStatistics(String startTime, String endTime, String type) {
+
+        Integer typeValue = null;
+
+        if (type != null) {
+            typeValue = "EXPENSE".equals(type) ? 0 : 1;
+        }
+
+        return billMapper.selectCategoryStatistics(
+               // UserContext.get(),
+                1L,
+                startTime,
+                endTime,
+                typeValue
+        );
+    }
+    @Override
+    public Map<String, BigDecimal> getTotalAmount(String startTime, String endTime) {
+        // 直接传3个参数给 Mapper，不用改 Mapper
+        Map<String, BigDecimal> result = billMapper.selectTotalAmount(1L, startTime, endTime);
+        return result != null ? result : new HashMap<>();
+    }
+
 }

@@ -27,6 +27,9 @@ public class GlobalExceptionHandler {
     // 兜底
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception e) {
+
+        e.printStackTrace();  //  加这一行！！！
+
         return Result.fail(50001, "系统异常");
     }
 }

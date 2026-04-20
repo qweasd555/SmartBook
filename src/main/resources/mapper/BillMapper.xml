@@ -7,7 +7,7 @@
     <select id="selectBillPage" resultType="com.zhiji.smartbook.module.bill.vo.BillListItemVO">
         SELECT id, type, amount, category_name, merchant_name, occurred_at, ocr_task_id AS source
         FROM transactions
-        WHERE user_id = #{userId}
+       WHERE user_id = #{userId}
           AND status = 0
           <if test="startTime != null and startTime != ''">
               AND occurred_at >= #{startTime}
@@ -25,22 +25,74 @@
     </select>
 
     <!-- 按天聚合账单 -->
+<!--    <select id="selectGroupByDate" resultType="com.zhiji.smartbook.module.bill.vo.BillGroupByDateVO">-->
+<!--        SELECT-->
+<!--            DATE_FORMAT(occurred_at, '%Y-%m-%d') AS date,-->
+<!--            SUM(CASE WHEN type = 0 THEN amount ELSE 0 END) AS expenseTotal,-->
+<!--            SUM(CASE WHEN type = 1 THEN amount ELSE 0 END) AS incomeTotal-->
+<!--        FROM transactions-->
+<!--        WHERE user_id = #{userId}-->
+<!--          AND status = 0-->
+<!--          <if test="startTime != null and startTime != ''">-->
+<!--              AND occurred_at >= #{startTime}-->
+<!--          </if>-->
+<!--          <if test="endTime != null and endTime != ''">-->
+<!--              AND occurred_at &lt;= #{endTime}-->
+<!--          </if>-->
+<!--        GROUP BY DATE_FORMAT(occurred_at, '%Y-%m-%d')-->
+<!--        ORDER BY date DESC-->
+<!--    </select>-->
     <select id="selectGroupByDate" resultType="com.zhiji.smartbook.module.bill.vo.BillGroupByDateVO">
         SELECT
-            DATE_FORMAT(occurred_at, '%Y-%m-%d') AS date,
+        DATE_FORMAT(occurred_at, '%Y-%m-%d') AS date,
+        SUM(CASE WHEN type = 0 THEN amount ELSE 0 END) AS expenseTotal,
+        SUM(CASE WHEN type = 1 THEN amount ELSE 0 END) AS incomeTotal
+        FROM transactions
+        WHERE user_id = #{userId}
+        AND status = 0
+        <if test="startTime != null and startTime != ''">
+            AND occurred_at &gt;= #{startTime}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND occurred_at &lt;= #{endTime}
+        </if>
+        <if test="categoryName != null and categoryName != ''">
+            AND category_name = #{categoryName}
+        </if>
+        GROUP BY DATE_FORMAT(occurred_at, '%Y-%m-%d')
+        ORDER BY date DESC
+    </select>
+
+    <!-- 分类统计（饼图） -->
+    <select id="selectCategoryStatistics" resultType="map">
+        SELECT
+        category_name AS categoryName,
+        SUM(amount) AS totalAmount
+        FROM transactions
+        WHERE user_id = #{userId}
+        AND status = 0
+
+        <if test="startTime != null and startTime != ''">
+            AND occurred_at >= #{startTime}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND occurred_at  &lt;=#{endTime}
+        </if>
+        <if test="type != null">
+            AND type = #{type}
+        </if>
+
+        GROUP BY category_name
+    </select>
+    <!-- 4. 区间总计（首页收支） -->
+    <select id="selectTotalAmount" resultType="java.util.Map">
+        SELECT
             SUM(CASE WHEN type = 0 THEN amount ELSE 0 END) AS expenseTotal,
             SUM(CASE WHEN type = 1 THEN amount ELSE 0 END) AS incomeTotal
         FROM transactions
         WHERE user_id = #{userId}
           AND status = 0
-          <if test="startTime != null and startTime != ''">
-              AND occurred_at >= #{startTime}
-          </if>
-          <if test="endTime != null and endTime != ''">
-              AND occurred_at &lt;= #{endTime}
-          </if>
-        GROUP BY DATE_FORMAT(occurred_at, '%Y-%m-%d')
-        ORDER BY date DESC
+          AND occurred_at &gt;= #{startTime}
+          AND occurred_at &lt;= #{endTime}
     </select>
-
 </mapper>
