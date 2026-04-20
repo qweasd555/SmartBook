@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 @Data
 public class RecentBillVO {
     private Long id;
-    private String type;
+    private Integer type;
     private BigDecimal amount;
     private String categoryName;
     private String merchantName;

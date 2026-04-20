@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.zhiji.smartbook.module.bill.entity.Bill;
 import com.zhiji.smartbook.module.bill.vo.BillGroupByDateVO;
 import com.zhiji.smartbook.module.bill.vo.BillListItemVO;
+import com.zhiji.smartbook.module.report.vo.CategoryRatioVO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -34,8 +35,8 @@ public interface BillMapper extends BaseMapper<Bill> {
                                               @Param("endTime") String endTime);
 
     // 4. 补充：分类统计（用于报表饼图）
-    List<Map<String, Object>> selectCategoryStatistics(@Param("userId") Long userId,
-                                                       @Param("startTime") String startTime,
-                                                       @Param("endTime") String endTime,
-                                                       @Param("type") Integer type);
+    List<CategoryRatioVO> selectCategoryStatistics(@Param("userId") Long userId,
+                                                   @Param("startTime") String startTime,
+                                                   @Param("endTime") String endTime,
+                                                   @Param("type") Integer type);
 }

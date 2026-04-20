@@ -1,16 +1,13 @@
-// 路径：com.zhiji.smartbook.module.user.vo.UserDashboardVO.java
 package com.zhiji.smartbook.module.user.vo;
 
 import lombok.Data;
 import java.math.BigDecimal;
 
 @Data
-public class UserDashboardVO {
-    // ✅ 把 balance 改成 netBalance（对齐文档）
+public class DashboardVO {
     private BigDecimal netBalance;
     private BigDecimal incomeTotal;
     private BigDecimal expenseTotal;
-    // ✅ 补充 challenge 字段
     private ChallengeVO challenge;
 
     @Data

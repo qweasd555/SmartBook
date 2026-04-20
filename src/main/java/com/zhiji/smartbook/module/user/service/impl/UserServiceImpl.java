@@ -1,7 +1,6 @@
+// 路径：com.zhiji.smartbook.module.user.service.impl.UserServiceImpl.java
 package com.zhiji.smartbook.module.user.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.zhiji.smartbook.common.utils.UserContext;
 import com.zhiji.smartbook.module.user.dto.UserProfileUpdateDTO;
 import com.zhiji.smartbook.module.user.entity.User;
 import com.zhiji.smartbook.module.user.mapper.UserMapper;
@@ -9,9 +8,10 @@ import com.zhiji.smartbook.module.user.service.UserService;
 import com.zhiji.smartbook.module.user.vo.UserDashboardVO;
 import com.zhiji.smartbook.module.user.vo.UserVO;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Service; // ✅ 必须有这个注解！
+import java.math.BigDecimal;
 
-@Service
+@Service // ✅ 必须有这个注解！
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
@@ -19,13 +19,13 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserVO getCurrentUser() {
-        User user = userMapper.selectById(UserContext.get());
+        User user = userMapper.selectById(1L); // 临时用1L，等登录模块做好了改回UserContext
         return toVO(user);
     }
 
     @Override
     public UserVO updateCurrentUser(UserProfileUpdateDTO request) {
-        User user = userMapper.selectById(UserContext.get());
+        User user = userMapper.selectById(1L);
         if (request.getNickname() != null) user.setNickname(request.getNickname());
         if (request.getAvatarUrl() != null) user.setAvatarUrl(request.getAvatarUrl());
         userMapper.updateById(user);
@@ -34,16 +34,17 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserDashboardVO getDashboard(String range) {
-        // TODO: 聚合账单数据，暂时返回空结构
-        UserDashboardVO dashboard = new UserDashboardVO();
-        dashboard.setRange(range);
-        dashboard.setNetBalance(0.0);
-        dashboard.setIncomeAmount(0.0);
-        dashboard.setExpenseAmount(0.0);
-        dashboard.setTodayExpense(0.0);
-        dashboard.setTodayIncome(0.0);
-        dashboard.setBudgetRemain(0.0);
-        return dashboard;
+        UserDashboardVO vo = new UserDashboardVO();
+        vo.setNetBalance(BigDecimal.ZERO);
+        vo.setIncomeTotal(BigDecimal.ZERO);
+        vo.setExpenseTotal(BigDecimal.ZERO);
+
+        UserDashboardVO.ChallengeVO challenge = new UserDashboardVO.ChallengeVO();
+        challenge.setCompletedDays(0);
+        challenge.setTotalDays(21);
+        vo.setChallenge(challenge);
+
+        return vo;
     }
 
     private UserVO toVO(User user) {

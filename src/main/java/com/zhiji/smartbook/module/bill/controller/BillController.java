@@ -85,6 +85,7 @@
 //}
 package com.zhiji.smartbook.module.bill.controller;
 
+import com.zhiji.smartbook.common.response.ListResult;
 import com.zhiji.smartbook.common.response.Result;
 import com.zhiji.smartbook.module.bill.dto.BillCreateDTO;
 import com.zhiji.smartbook.module.bill.dto.BillUpdateDTO;
@@ -157,14 +158,16 @@ public class BillController {
 
     // 按日期分组：手动拿参数
     @GetMapping("/group-by-date")
-    public Result<List<BillGroupByDateVO>> groupByDate(HttpServletRequest request) {
+    public Result<ListResult<BillGroupByDateVO>> groupByDate(HttpServletRequest request) {
         Long ledgerId = request.getParameter("ledgerId") != null
                 ? Long.parseLong(request.getParameter("ledgerId")) : 1L;
         String startDate = request.getParameter("startDate");
         String endDate = request.getParameter("endDate");
-        String categoryName = request.getParameter("categoryName"); // 加上这一行
+        String categoryName = request.getParameter("categoryName");
 
-        return Result.success(billService.groupByDate(ledgerId, startDate, endDate, categoryName));
+        List<BillGroupByDateVO> list = billService.groupByDate(ledgerId, startDate, endDate, categoryName);
+        // ✅ 必须用 ListResult 包装
+        return Result.success(ListResult.of(list));
     }
 
     // 最近账单：手动拿参数

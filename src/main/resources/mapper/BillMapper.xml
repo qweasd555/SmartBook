@@ -64,10 +64,10 @@
     </select>
 
     <!-- 分类统计（饼图） -->
-    <select id="selectCategoryStatistics" resultType="map">
+    <select id="selectCategoryStatistics" resultType="com.zhiji.smartbook.module.report.vo.CategoryRatioVO">
         SELECT
         category_name AS categoryName,
-        SUM(amount) AS totalAmount
+        SUM(amount) AS amount
         FROM transactions
         WHERE user_id = #{userId}
         AND status = 0

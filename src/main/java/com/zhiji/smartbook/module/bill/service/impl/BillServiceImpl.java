@@ -2,6 +2,8 @@ package com.zhiji.smartbook.module.bill.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zhiji.smartbook.common.response.ListResult;
+import com.zhiji.smartbook.common.response.Result;
 import com.zhiji.smartbook.module.bill.dto.BillCreateDTO;
 import com.zhiji.smartbook.module.bill.dto.BillUpdateDTO;
 import com.zhiji.smartbook.module.bill.entity.Bill;
@@ -12,8 +14,11 @@ import com.zhiji.smartbook.module.bill.vo.BillGroupByDateVO;
 import com.zhiji.smartbook.module.bill.vo.BillListItemVO;
 import com.zhiji.smartbook.module.bill.vo.RecentBillVO;
 import com.zhiji.smartbook.common.utils.UserContext;
+import com.zhiji.smartbook.module.user.vo.UserDashboardVO;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.GetMapping;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -134,6 +139,9 @@ public class BillServiceImpl implements BillService {
 //        return billMapper.selectGroupByDate(1L,
 //                startDate + " 00:00:00", endDate + " 23:59:59");
 //    }
+//
+// 路径：com.zhiji.smartbook.module.bill.service.impl.BillServiceImpl.java
+// ✅ 现在 @Override 就不会报错了
 @Override
 public List<BillGroupByDateVO> groupByDate(Long ledgerId, String startDate, String endDate, String categoryName) {
     String startTime = startDate != null ? startDate + " 00:00:00" : null;
@@ -167,21 +175,25 @@ public List<BillGroupByDateVO> groupByDate(Long ledgerId, String startDate, Stri
         if (bill == null) return null;
         BillDetailVO vo = new BillDetailVO();
         vo.setId(bill.getId());
-        vo.setType(bill.getType() == 0 ? "EXPENSE" : "INCOME");
+
+        //vo.setType(bill.getType() == 0 ? "EXPENSE" : "INCOME");
+        // 原来的字符串 type 改成数字
+        vo.setType(bill.getType()); // bill.getType() 是 0/1，直接 set
+
         vo.setAmount(bill.getAmount());
         vo.setCategoryName(bill.getCategoryName());
         vo.setMerchantName(bill.getMerchantName());
         vo.setOccurredAt(bill.getOccurredAt() != null ? bill.getOccurredAt().format(FMT) : null);
         vo.setRemark(bill.getRemark());
         vo.setReceiptImageUrl(bill.getReceiptImageUrl());
-        vo.setSource(bill.getOcrTaskId() != null ? "OCR" : "MANUAL");
+        // vo.setSource(bill.getOcrTaskId() != null ? "OCR" : "MANUAL");
         return vo;
     }
 
     private RecentBillVO toRecentVO(Bill bill) {
         RecentBillVO vo = new RecentBillVO();
         vo.setId(bill.getId());
-        vo.setType(bill.getType() == 0 ? "EXPENSE" : "INCOME");
+        vo.setType(bill.getType());
         vo.setAmount(bill.getAmount());
         vo.setCategoryName(bill.getCategoryName());
         vo.setMerchantName(bill.getMerchantName());
@@ -190,28 +202,14 @@ public List<BillGroupByDateVO> groupByDate(Long ledgerId, String startDate, Stri
         return vo;
     }
 
-    @Override
-    public List<Map<String, Object>> getCategoryStatistics(String startTime, String endTime, String type) {
 
-        Integer typeValue = null;
-
-        if (type != null) {
-            typeValue = "EXPENSE".equals(type) ? 0 : 1;
-        }
-
-        return billMapper.selectCategoryStatistics(
-               // UserContext.get(),
-                1L,
-                startTime,
-                endTime,
-                typeValue
-        );
-    }
     @Override
     public Map<String, BigDecimal> getTotalAmount(String startTime, String endTime) {
         // 直接传3个参数给 Mapper，不用改 Mapper
         Map<String, BigDecimal> result = billMapper.selectTotalAmount(1L, startTime, endTime);
         return result != null ? result : new HashMap<>();
     }
+    // 路径：com.zhiji.smartbook.module.user.service.impl.UserServiceImpl.java
+
 
 }
